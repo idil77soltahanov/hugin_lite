@@ -50,7 +50,7 @@ IF(wxWidgets_FOUND)
   INCLUDE(${wxWidgets_USE_FILE})
   add_subdirectory(hugin1)
 
-  include_directories( ${CMAKE_SOURCE_DIR}/src/hugin1 )
+#  include_directories( ${CMAKE_SOURCE_DIR}/src/hugin1 )
   # do we need to define _UNICODE on windows?
   IF(WIN32)
     IF ("${wxWidgets_CONFIGURATION}" STREQUAL "mswu")
@@ -58,6 +58,8 @@ IF(wxWidgets_FOUND)
     ENDIF("${wxWidgets_CONFIGURATION}" STREQUAL "mswu")
   ENDIF(WIN32)
 ENDIF(wxWidgets_FOUND)
+
+include_directories( ${CMAKE_SOURCE_DIR}/src/hugin1 )
 
 add_subdirectory(hugin_cpfind)
 add_subdirectory(translations)

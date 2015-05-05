@@ -174,7 +174,7 @@ ENDIF(WIN32)
 #  This must come before FINDs for tiff, jpeg, png, zlib to enable
 #  finding the wxWidgets distributions of those packages (Win32 only).
 SET(wxWidgets_USE_LIBS base core aui xrc html xml adv gl net)
-FIND_PACKAGE(wxWidgets REQUIRED)
+#FIND_PACKAGE(wxWidgets REQUIRED)
 
 # hugin requires wxwidgets 2.7.0 or above
 IF (UNIX)
@@ -304,8 +304,8 @@ FIND_PACKAGE(Lensfun REQUIRED)
 INCLUDE_DIRECTORIES(${LENSFUN_INCLUDE_DIR})
 
 IF(UNIX)
-  OPTION(BUILD_HSI "Python Scripting Interface" ON)
-ELSE(UNIX)
+#  OPTION(BUILD_HSI "Python Scripting Interface" ON)
+#ELSE(UNIX)
   OPTION(BUILD_HSI "Python Scripting Interface" OFF)
 ENDIF(UNIX)
 IF(BUILD_HSI)
