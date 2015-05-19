@@ -73,6 +73,7 @@ static void usage(const char* name)
          << endl;
 }
 
+#ifndef HUGIN_LITE
 void InitLensDB()
 {
 #ifdef _WINDOWS
@@ -106,6 +107,7 @@ void InitLensDB()
     }
 #endif
 };
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -289,10 +291,12 @@ int main(int argc, char* argv[])
     //sort filenames
     sort(filelist.begin(),filelist.end(),doj::alphanum_less());
 
+#ifndef HUGIN_LITE
     if(projection<0)
     {
         InitLensDB();
     };
+#endif
 
     Panorama pano;
     for(size_t i=0; i<filelist.size();i++)
@@ -310,6 +314,7 @@ int main(int argc, char* argv[])
                 continue;
             }
             srcImage.setSize(info.size());
+#ifndef HUGIN_LITE
             std::string pixelType=info.getPixelType();
             if((pixelType=="UINT8") || (pixelType=="UINT16") || (pixelType=="INT16"))
             {
@@ -319,6 +324,10 @@ int main(int argc, char* argv[])
             {
                 srcImage.setResponseType(HuginBase::SrcPanoImage::RESPONSE_LINEAR);
             };
+#else
+            srcImage.setResponseType(HuginBase::SrcPanoImage::RESPONSE_EMOR);
+#endif
+
         }
         catch(std::exception & e)
         {
@@ -330,6 +339,7 @@ int main(int argc, char* argv[])
 
         srcImage.readEXIF();
         srcImage.applyEXIFValues();
+#ifndef HUGIN_LITE
         if(projection>=0)
         {
             srcImage.setProjection((HuginBase::BaseSrcPanoImage::Projection)projection);
@@ -338,6 +348,10 @@ int main(int argc, char* argv[])
         {
             srcImage.readProjectionFromDB();
         };
+#else
+        srcImage.setProjection((HuginBase::BaseSrcPanoImage::Projection)projection);
+#endif
+#ifndef HUGIN_LITE
         if(fov>0)
         {
             srcImage.setHFOV(fov);
@@ -357,6 +371,11 @@ int main(int argc, char* argv[])
                 srcImage.setCropFactor(1.0);
             };
         };
+#else
+        srcImage.setHFOV(fov);
+        srcImage.setCropFactor(1.0);
+#endif
+#ifndef HUGIN_LITE
         if(cropRect.width()>0 && cropRect.height()>0)
         {
             if(srcImage.isCircularCrop())
@@ -392,6 +411,7 @@ int main(int argc, char* argv[])
                 cout << "\tNo valid vignetting data found in lensfun database." << endl;
             };
         };
+#endif
 
         pano.addImage(srcImage);
     };
@@ -421,6 +441,7 @@ int main(int argc, char* argv[])
 
         for(size_t i=1;i<pano.getNrOfImages();i++)
         {
+#ifndef HUGIN_LITE
             int image=-1;
             const SrcPanoImage & srcImg=pano.getImage(i);
             for(size_t j=0;j<i;j++)
@@ -449,7 +470,20 @@ int main(int argc, char* argv[])
                 img.setWhiteBalanceBlue(img.getExifBlueBalance()/blueBalanceAnchor);
                 pano.setSrcImage(i, img);
             };
+#else
+	    SrcPanoImage img=pano.getSrcImage(i);
+	    double ev=img.getExposureValue();
+	    lenses.switchParts(i,lenses.getPartNumber(0));
+	    lenses.unlinkVariableImage(HuginBase::ImageVariableGroup::IVE_ExposureValue, i);
+	    img.setExposureValue(ev);
+	    lenses.unlinkVariableImage(HuginBase::ImageVariableGroup::IVE_WhiteBalanceRed, i);
+	    lenses.unlinkVariableImage(HuginBase::ImageVariableGroup::IVE_WhiteBalanceBlue, i);
+	    img.setWhiteBalanceRed(img.getExifRedBalance()/redBalanceAnchor);
+	    img.setWhiteBalanceBlue(img.getExifBlueBalance()/blueBalanceAnchor);
+	    pano.setSrcImage(i, img);
+#endif
         };
+#ifndef HUGIN_LITE
         cout << endl << "Assigned " << lenses.getNumberOfParts() << " lenses." << endl;
         if(lenses.getNumberOfParts()>1 && stackLength>1)
         {
@@ -458,8 +492,10 @@ int main(int argc, char* argv[])
                  << "assigned." << endl << endl;
             stackLength=1;
         };
+#endif
     };
 
+#ifndef HUGIN_LITE
     //link stacks
     if(pano.getNrOfImages()>1 && stackLength>1)
     {
@@ -491,6 +527,7 @@ int main(int argc, char* argv[])
             cout << "Assigned " << stackCount << " stacks." << endl;
         };
     };
+#endif
 
     //set output exposure value
     PanoramaOptions opt = pano.getOptions();
@@ -500,6 +537,7 @@ int main(int argc, char* argv[])
     pano.setOptimizerSwitch(HuginBase::OPT_PAIR);
     pano.setPhotometricOptimizerSwitch(HuginBase::OPT_EXPOSURE | HuginBase::OPT_VIGNETTING | HuginBase::OPT_RESPONSE);
 
+#ifndef HUGIN_LITE
     //output
     if(output=="")
     {
@@ -511,6 +549,7 @@ int main(int argc, char* argv[])
         };
         output=output.append(".pto");
     };
+#endif
     output=GetAbsoluteFilename(output);
     //write output
     UIntSet imgs;

@@ -363,6 +363,15 @@ IF(BUILD_HSI)
 ENDIF()
 
 ##
+## Hugin Lite
+##
+OPTION (ENABLE_UGIN_LITE "Enable lightweight version of Hugin" OFF)
+
+IF(ENABLE_HUGIN_LITE)
+  ADD_DEFINITIONS(-DHUGIN_LITE)
+ENDIF()
+
+##
 ## LAPACK (optional, enable by -DENABLE_LAPACK=ON)
 ##
 OPTION (ENABLE_LAPACK "Use LAPACK based solver in levmar" OFF)
