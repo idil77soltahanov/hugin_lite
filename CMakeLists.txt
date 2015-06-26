@@ -365,7 +365,7 @@ ENDIF()
 ##
 ## Hugin Lite
 ##
-OPTION (ENABLE_UGIN_LITE "Enable lightweight version of Hugin" OFF)
+OPTION (ENABLE_HUGIN_LITE "Enable lightweight version of Hugin" ON)
 
 IF(ENABLE_HUGIN_LITE)
   ADD_DEFINITIONS(-DHUGIN_LITE)

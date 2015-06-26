@@ -269,6 +269,7 @@ bool PanoDetector::AnalyzeImage(ImgData& ioImgInfo, const PanoDetector& iPanoDet
             };
         };
 
+#ifndef HUGIN_LITE
         if(iPanoDetector.getCeleste())
         {
             vigra::FRGBImage scaled(ioImgInfo._detectWidth,ioImgInfo._detectHeight);
@@ -369,6 +370,21 @@ bool PanoDetector::AnalyzeImage(ImgData& ioImgInfo, const PanoDetector& iPanoDet
                 };
             };
         };
+#else
+        //without celeste
+        final_img.resize(ioImgInfo._detectWidth,ioImgInfo._detectHeight);
+        // convert to grayscale
+        TRACE_IMG("Convert to greyscale double...");
+        vigra::copyImage(RGBimg.upperLeft(), RGBimg.lowerRight(), vigra::RGBToGrayAccessor<vigra::RGBValue<double> >(),
+                         final_img.upperLeft(), vigra::DImage::Accessor());
+        RGBimg.resize(0,0);
+        if(mask.width()>0 && mask.height()>0)
+        {
+            final_mask.resize(ioImgInfo._detectWidth, ioImgInfo._detectHeight);
+            vigra::copyImage(srcImageRange(mask),destImage(final_mask));
+            mask.resize(0,0);
+        };
+#endif
 
         //now scale image from 0..1 to 0..255
         vigra::transformImage(srcImageRange(final_img),destImage(final_img),vigra::functor::Arg1()*vigra::functor::Param(255));
@@ -512,7 +528,7 @@ bool PanoDetector::MakeKeyPointDescriptorsInImage(ImgData& ioImgInfo, const Pano
 
 bool PanoDetector::RemapBackKeypoints(ImgData& ioImgInfo, const PanoDetector& iPanoDetector)
 {
-
+#ifndef HUGIN_LITE
     double scale=iPanoDetector._downscale ? 2.0:1.0;
 
     if (!ioImgInfo._needsremap)
@@ -550,6 +566,26 @@ bool PanoDetector::RemapBackKeypoints(ImgData& ioImgInfo, const PanoDetector& iP
             }
         }
     }
+#else
+    TRACE_IMG("Remapping back keypoints...");
+    HuginBase::PTools::Transform trafo1;
+    trafo1.createTransform(iPanoDetector._panoramaInfoCopy.getSrcImage(ioImgInfo._number),
+                           ioImgInfo._projOpts);
+
+    int dx1 = ioImgInfo._projOpts.getROI().left();
+    int dy1 = ioImgInfo._projOpts.getROI().top();
+
+    BOOST_FOREACH(KeyPointPtr& aK, ioImgInfo._kp)
+    {
+        double xout, yout;
+        if(trafo1.transformImgCoord(xout, yout, aK->_x + dx1, aK->_y+ dy1))
+        {
+            aK->_x=xout;
+            aK->_y=yout;
+            aK->_scale *= 2.0;
+        }
+    }
+#endif
     return true;
 }
 
@@ -669,6 +705,7 @@ bool PanoDetector::FindMatchesInPair(MatchData& ioMatchData, const PanoDetector&
 
 bool PanoDetector::RansacMatchesInPair(MatchData& ioMatchData, const PanoDetector& iPanoDetector)
 {
+#ifndef HUGIN_LITE
     // Use panotools model for wide angle lenses
     RANSACOptimizer::Mode rmode = iPanoDetector._ransacMode;
     if (rmode == RANSACOptimizer::HOMOGRAPHY ||
@@ -681,6 +718,9 @@ bool PanoDetector::RansacMatchesInPair(MatchData& ioMatchData, const PanoDetecto
     {
         return RansacMatchesInPairCam(ioMatchData, iPanoDetector);
     }
+#else
+    return RansacMatchesInPairCam(ioMatchData, iPanoDetector);
+#endif
 }
 
 // new code with fisheye aware ransac

@@ -53,6 +53,11 @@
 #include <hugin_config.h>
 #endif
 
+#ifdef HUGIN_LITE
+#include <utility>
+typedef pair<unsigned int, unsigned int> pair_num;
+#endif
+
 #ifndef srandom
 #define srandom srand
 #endif
@@ -404,6 +409,7 @@ void PanoDetector::run()
     {
         return;
     };
+#ifndef HUGIN_LITE
     if(_writeAllKeyPoints)
     {
         for(unsigned int i=0; i<_panoramaInfo->getNrOfImages(); i++)
@@ -417,6 +423,7 @@ void PanoDetector::run()
         CleanupKeyfiles();
         return;
     };
+#endif
 
     //checking, if memory allows running desired number of threads
     unsigned long maxImageSize=0;
@@ -462,6 +469,7 @@ void PanoDetector::run()
     };
     PoolExecutor aExecutor(_cores);
     svmModel=NULL;
+#ifndef HUGIN_LITE
     if(_celeste)
     {
         TRACE_INFO("\nLoading Celeste model file...\n");
@@ -470,6 +478,7 @@ void PanoDetector::run()
             setCeleste(false);
         };
     };
+#endif
 
     //print some more information about the images
     if (_verbose > 0)
@@ -486,6 +495,7 @@ void PanoDetector::run()
 #endif
     try
     {
+#ifndef HUGIN_LITE
         if (_keyPointsIdx.size() != 0)
         {
             if (_verbose > 0)
@@ -512,6 +522,12 @@ void PanoDetector::run()
                 }
             }
         }
+#else
+        for (ImgDataIt_t aB = _filesData.begin(); aB != _filesData.end(); ++aB)
+        {
+            aExecutor.execute(new ImgDataRunnable(aB->second, *this));
+        }
+#endif
         aExecutor.wait();
     }
     catch(Synchronization_Exception& e)
@@ -524,10 +540,12 @@ void PanoDetector::run()
         return;
     }
 
+#ifndef HUGIN_LITE
     if(svmModel!=NULL)
     {
         celeste::destroySVMmodel(svmModel);
     };
+#endif
 
     // check if the load of images succeed.
     if (!checkLoadSuccess())
@@ -536,6 +554,7 @@ void PanoDetector::run()
         return;
     }
 
+#ifndef HUGIN_LITE
     if(_cache)
     {
         TRACE_INFO(endl << "--- Cache keyfiles to disc ---" << endl);
@@ -548,7 +567,9 @@ void PanoDetector::run()
             };
         };
     };
+#endif
 
+#ifndef HUGIN_LITE
     // Detect matches if writeKeyPoints wasn't set
     if(_keyPointsIdx.size() == 0)
     {
@@ -598,6 +619,13 @@ void PanoDetector::run()
                 break;
         };
     }
+#else
+    std::vector<HuginBase::UIntSet> imgPairs(_panoramaInfo->getNrOfImages());
+    if(!match(aExecutor, imgPairs))
+    {
+        return;
+    };
+#endif
 
     // 5. write output
     if (_keyPointsIdx.size() != 0)
@@ -627,6 +655,7 @@ void PanoDetector::run()
 
 bool PanoDetector::match(PoolExecutor& aExecutor, std::vector<HuginBase::UIntSet> &checkedPairs)
 {
+#ifndef HUGIN_LITE
     // 3. prepare matches
     _matchesData.clear();
     unsigned int aLen = _filesData.size();
@@ -665,8 +694,40 @@ bool PanoDetector::match(PoolExecutor& aExecutor, std::vector<HuginBase::UIntSet
             checkedPairs[i2].insert(i1);
         }
     }
+#else
+    // 3. prepare matches
+    // We assumed that source images are order, so we do not need to match all pairs
+    // Size = 4 as am example, the pairs are (0, 3), (0, 1), (1, 2), (2, 3)
+    vector<pair_num> matchedPairs;
+    if(_filesData.size() >= 2)
+    {
+        matchedPairs.push_back(make_pair(0, 1));
+        matchedPairs.push_back(make_pair(0, _filesData.size() - 1));
+        for(unsigned int i1 = 1;i1 < (_filesData.size() - 1);i1++)
+        {
+            matchedPairs.push_back(make_pair(i1, i1 + 1));
+        }
+    }
+
+    BOOST_FOREACH(pair_num _pair, matchedPairs)
+    {
+        unsigned int i1 = _pair.first, i2 = _pair.second;
+        if(set_contains(checkedPairs[i1], i2))
+        {
+            continue;
+        };
+        MatchData aM;
+        aM._i1 = &(_filesData[i1]);
+        aM._i2 = &(_filesData[i2]);
+        _matchesData.push_back(aM);
+
+        checkedPairs[i1].insert(i2);
+        checkedPairs[i2].insert(i1);
+    }
+#endif
     // 4. find matches
     TRACE_INFO(endl<< "--- Find pair-wise matches ---" << endl);
+    TRACE_INFO(endl<< "# of pairs: " << _matchesData.size() << endl);
     try
     {
         BOOST_FOREACH(MatchData& aMD, _matchesData)
@@ -754,6 +815,7 @@ bool PanoDetector::loadProject()
         // Number pointing to image info in _panoramaInfo
         aImgData._number = imgNr;
 
+#ifndef HUGIN_LITE
         aImgData._needsremap=(img.getHFOV()>=65 && img.getProjection() != SrcPanoImage::FISHEYE_STEREOGRAPHIC);
         // set image detection size
         if(aImgData._needsremap)
@@ -772,6 +834,13 @@ bool PanoDetector::loadProject()
             _filesData[imgNr]._detectWidth >>= 1;
             _filesData[imgNr]._detectHeight >>= 1;
         }
+#else
+        aImgData._needsremap=(img.getHFOV()>=65 && img.getProjection() != SrcPanoImage::FISHEYE_STEREOGRAPHIC);
+        _filesData[imgNr]._detectWidth = max(img.getSize().width(),img.getSize().height());
+        _filesData[imgNr]._detectHeight = max(img.getSize().width(),img.getSize().height());
+        _filesData[imgNr]._detectWidth >>= 1;
+        _filesData[imgNr]._detectHeight >>= 1;
+#endif
 
         // set image remapping options
         if(aImgData._needsremap)
@@ -802,29 +871,33 @@ bool PanoDetector::loadProject()
             aImgData._projOpts.setROI(roi);
         }
 
+#ifndef HUGIN_LITE
         // Specify if the image has an associated keypoint file
-
         aImgData._keyfilename = getKeyfilenameFor(_keypath,aImgData._name);
         aImgData._hasakeyfile = hugin_utils::FileExists(aImgData._keyfilename);
         if(aImgData._hasakeyfile)
         {
             imgWithKeyfile++;
         };
+#endif
     }
     //update masks, convert positive masks into negative masks
     //because positive masks works only if the images are on the final positions
     _panoramaInfoCopy.updateMasks(true);
 
+#ifndef HUGIN_LITE
     //if all images has keyfile, we don't need to load celeste model file
     if(nImg==imgWithKeyfile)
     {
         _celeste=false;
     };
+#endif
     return true;
 }
 
 bool PanoDetector::checkLoadSuccess()
 {
+#ifndef HUGIN_LITE
     if(_keyPointsIdx.size()!=0)
     {
         for (unsigned int i = 0; i < _keyPointsIdx.size(); ++i)
@@ -845,6 +918,15 @@ bool PanoDetector::checkLoadSuccess()
             };
         };
     };
+#else
+    for (unsigned int aFileN = 0; aFileN < _filesData.size(); ++aFileN)
+    {
+        if(_filesData[aFileN]._loadFail)
+        {
+            return false;
+        };
+    };
+#endif
     return true;
 }
 

@@ -424,10 +424,12 @@ int main(int argc, char** argv)
         return 0;
     }
 
+#ifndef HUGIN_LITE
     if (!aPanoDetector.checkData())
     {
         return 0;
     }
+#endif
 
     printVersion();
     if (aPanoDetector.getVerbose() > 1)
