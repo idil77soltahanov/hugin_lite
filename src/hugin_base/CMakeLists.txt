@@ -129,6 +129,7 @@ vigra_ext/MultiThreadOperations.h
 vigra_ext/ImageTransformsGPU.h
 )
 
+
 IF (${HUGIN_SHARED_LIBS})
   add_library(huginbase SHARED ${HUGIN_BASE_SRC} ${HUGIN_BASE_HEADER})
   target_link_libraries(huginbase ${Boost_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
@@ -144,13 +145,17 @@ ELSE (${HUGIN_SHARED_LIBS})
   add_library(huginbase STATIC ${HUGIN_BASE_SRC} ${HUGIN_BASE_HEADER})
 ENDIF (${HUGIN_SHARED_LIBS})
 
-TARGET_LINK_LIBRARIES(huginbase huginlevmar huginvigraimpex makefilelib
+IF(ENABLE_HUGIN_LITE)
+  target_link_libraries(huginbase libhl)
+ENDIF(ENABLE_HUGIN_LITE)
+
+target_link_libraries(huginbase huginlevmar huginvigraimpex makefilelib
         ${Boost_LIBRARIES} ${EXIV2_LIBRARIES} ${PANO_LIBRARIES}
         ${TIFF_LIBRARIES} ${LAPACK_LIBRARIES} ${GLEW_LIBRARIES}
         ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT}
         ${LENSFUN_LIBRARIES} ${LENSFUN_REGEX_LIBRARIES} ${GLIB2_LIBRARIES})
 
-INSTALL(FILES algorithms/panorama_makefile/hugin_exiftool_copy.arg DESTINATION ${INSTALL_DATA_DIR})
+install(FILES algorithms/panorama_makefile/hugin_exiftool_copy.arg DESTINATION ${INSTALL_DATA_DIR})
         
 add_subdirectory(makefilelib)
 add_subdirectory(lines)

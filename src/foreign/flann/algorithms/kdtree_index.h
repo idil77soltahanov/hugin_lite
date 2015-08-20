@@ -88,6 +88,9 @@ public:
     {
         size_ = dataset_.rows;
         veclen_ = dataset_.cols;
+#ifdef ICPC_OPTIMIZE
+        veclen_sse_bound = veclen_ / 4 * 4;
+#endif
 
         trees_ = get_param(index_params_,"trees",4);
         tree_roots_ = new NodePtr[trees_];
@@ -482,7 +485,11 @@ private:
             checked.set(index);
             checkCount++;
 
+#ifndef ICPC_OPTIMIZE
             DistanceType dist = distance_(dataset_[index], vec, veclen_);
+#else
+            DistanceType dist = eudistance_sse(dataset_[index], vec);
+#endif
             result_set.addPoint(dist,index);
 
             return;
@@ -612,6 +619,65 @@ private:
 
     Distance distance_;
 
+#ifdef ICPC_OPTIMIZE
+
+    /**
+     * Used by "eudistance_sse" function,
+     * the maximum size of data that can be calculated parallely
+     */
+    size_t veclen_sse_bound;
+
+    inline double eudistance_sse(double* a, const double* b) const
+    {
+#if 0
+        __m256d _result = _mm256_setzero_pd();
+        double result = 0.0;
+
+        for(size_t i = 0;i < veclen_sse_bound;i += 4)
+        {
+            const __m256d _a = _mm256_loadu_pd(a);
+            const __m256d _b = _mm256_loadu_pd(b);
+            const __m256d _diff = _mm256_sub_pd(_a, _b);
+            const __m256d _diff_square = _mm256_mul_pd(_diff, _diff);
+            _result = _mm256_add_pd(_result, _diff_square);
+            a += 4;
+            b += 4;
+        }
+        // Get sum of 4 double values of _result
+        const __m256d _shuffle0 = _mm256_shuffle_pd(_result, _result, _MM_SHUFFLE(1, 0, 3, 2));
+        const __m256d _sum0 = _mm256_add_pd(_result, _shuffle0);
+        const __m256d _shuffle1 = _mm256_shuffle_pd(_sum0, _sum0, _MM_SHUFFLE(3, 2, 1, 0));
+        const __m256d _sum1 = _mm256_add_pd(_result, _shuffle1);
+        _mm256_store_pd(&result, _result);
+
+        // add the remaining points to result
+        for(size_t i = veclen_sse_bound;i < veclen_;i++)
+        {
+            const double diff = a[0] - b[0];
+            result += diff * diff;
+        }
+
+        return result;
+#else
+        double result = 0.0;
+
+        for(size_t i = 0;i < veclen_sse_bound;i += 4)
+        {
+            result += (a[i] - b[i]) * (a[i] - b[i]);
+            result += (a[i + 1] - b[i + 1]) * (a[i + 1] - b[i + 1]);
+            result += (a[i + 2] - b[i + 2]) * (a[i + 2] - b[i + 2]);
+            result += (a[i + 3] - b[i + 3]) * (a[i + 3] - b[i + 3]);
+        }
+
+        for(size_t i = veclen_sse_bound;i < veclen_;i++)
+        {
+            result += (a[i] -b[i]) * (a[i] - b[i]);
+        }
+
+        return result;
+#endif
+    }
+#endif
 
 };   // class KDTreeForest
 

@@ -37,6 +37,10 @@
 #include <panodata/PanoramaData.h>
 #include <panodata/StandardImageVariableGroups.h>
 
+#ifdef HUGIN_LITE
+#include <libhl/FastLibpano13.h>
+#endif
+
 namespace HuginBase { namespace PTools {
     
 Transform::~Transform()
@@ -181,7 +185,12 @@ void Transform::createTransform(const vigra::Diff2D & srcSize,
     updatePTData(srcSize, srcVars, srcProj,
                  destSize, destProj, destProjParam, destHFOV);
     // create the actual stack
+#ifndef HUGIN_LITE
     SetMakeParams( m_stack, &m_mp, &m_srcImage , &m_dstImage, 0 );
+#else
+    libhl::hl_SetMakeParams( m_stack, &m_mp, &m_srcImage , &m_dstImage, 0 );
+#endif
+
 }
 
 

@@ -36,6 +36,10 @@
 #include "MathStuff.h"
 #include "WaveFilter.h"
 
+#ifdef HUGIN_LITE
+#include <libhl/FastMath.h>
+#endif
+
 //#define DEBUG_DESC
 //#define DEBUG_ROT
 
@@ -196,12 +200,20 @@ int CircularKeyPointDescriptor::assignOrientation(KeyPoint& ioKeyPoint, double a
                 if (aWavResp > 0)
                 {
                     // add PI ->  0 .. 2*PI interval
+#ifndef HUGIN_LITE
                     double angle = atan2(aWavY, aWavX)+PI;
+#else
+                    double angle = libhl::hl_atan2(aWavY, aWavX) + PI;
+#endif
                     int bin =  angle/(2*PI) * _ori_nbins;
                     // deal with possible rounding problems.
                     bin = (bin+_ori_nbins)%_ori_nbins;
                     // center of bin 0 equals -PI + 16°deg, etc.
+#ifndef HUGIN_LITE
                     double weight = exp(coeffmul * (aSqDist+coeffadd));
+#else
+                    double weight = libhl::hl_exp(coeffmul * (aSqDist+coeffadd));
+#endif
                     hist[bin] += aWavResp * weight;
                     //hist[bin] += aWavResp * Exp1_2(aSqDist);
 #ifdef DEBUG_ROT_2

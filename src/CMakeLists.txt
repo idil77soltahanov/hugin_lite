@@ -63,3 +63,8 @@ include_directories( ${CMAKE_SOURCE_DIR}/src/hugin1 )
 
 add_subdirectory(hugin_cpfind)
 add_subdirectory(translations)
+
+if(ENABLE_HUGIN_LITE)
+  add_subdirectory(libhl)
+  include_directories( ${CMAKE_SOURCE_DIR}/src/libhl )
+ENDIF(ENABLE_HUGIN_LITE)
